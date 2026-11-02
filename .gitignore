@@ -23,3 +23,8 @@ __pycache__/
 venv/
 node_modules/
 .claude/settings.local.json
+
+# Local databases built from licensed data
+*.db
+*.db.tmp
+*.sqlite
