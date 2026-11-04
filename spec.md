@@ -92,6 +92,7 @@ updated: 2026-11-02
 2. **Dividend Scan:** `tools/dividend_scan.py` อ่าน `stocks.db` แล้วสร้าง
    - `output/dividend_scan.csv`: หุ้นที่ผ่านด่านปันผล พร้อมคะแนน ป้าย และแหล่งที่มากับวันที่ของทุกตัวเลข (เฉพาะ ratio และตัวเลขต่อหุ้น ไม่มีงบดิบ SETSMART)
    - `output/dividend_scan.html`: dashboard หน้าเดียว แบบเดียวกับตัวอย่าง `stock_valuation_derating_report.html` ของผู้เรียน มีการ์ดสรุป ตารางเรียงได้ ปุ่มกรองตามป้าย และหน้าต่างของแต่ละหุ้นแสดง DPS, payout และ ROIC รายปีพร้อมแหล่งที่มา
+   - `output/dividend_scan_report.md` และ `.html`: รายงานสรุปผล สร้างด้วย `tools/dividend_report.py` จากข้อมูลใน dashboard
 3. **Deepdive:** รายงานเชิงลึกของหุ้นใน shortlist 1 ตัว แล้วใช้ skill เดียวกันกับหุ้นอีกกลุ่ม 1 ตัว เพื่อพิสูจน์ว่าแกนของ skill ใช้ข้ามกลุ่มได้ (`output/deepdive_<TICKER>.html` × 2)
 
 ## 6. Success criteria · รู้ได้อย่างไรว่างานผ่าน
