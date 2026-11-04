@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dividend Scan</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root { --bg:#0b1120; --card:#131c31; --line:#24314f; --text:#e2e8f0; --muted:#94a3b8;
+          --accent:#34d399; --blue:#60a5fa; --amber:#fbbf24; --red:#f87171; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.55 "Sarabun","Segoe UI",sans-serif; }
+  .wrap { max-width:1200px; margin:0 auto; padding:24px 16px 48px; }
+  h1 { font-size:26px; margin:0 0 4px; } h2 { font-size:18px; margin:32px 0 12px; }
+  .sub { color:var(--muted); margin:0 0 20px; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 16px; }
+  .card .k { color:var(--muted); font-size:13px; } .card .v { font-size:24px; font-weight:700; margin-top:2px; }
+  .card .n { color:var(--muted); font-size:12px; }
+  .funnel { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  .step { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:10px 14px; }
+  .step b { display:block; font-size:22px; } .arrow { color:var(--muted); }
+  .filters { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 12px; }
+  .filters button { background:var(--card); color:var(--text); border:1px solid var(--line);
+                    border-radius:999px; padding:6px 14px; cursor:pointer; font:inherit; font-size:14px; }
+  .filters button.on { background:var(--accent); color:#06281d; border-color:var(--accent); }
+  .tbl { overflow-x:auto; border:1px solid var(--line); border-radius:12px; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th, td { padding:9px 10px; text-align:right; white-space:nowrap; border-bottom:1px solid var(--line); }
+  th { background:#0f172a; color:var(--muted); cursor:pointer; position:sticky; top:0; user-select:none; }
+  th:nth-child(-n+3), td:nth-child(-n+3) { text-align:left; }
+  tr.sl td:first-child { border-left:3px solid var(--accent); }
+  tbody tr:hover { background:#1a2540; cursor:pointer; }
+  .tag { display:inline-block; font-size:11px; padding:1px 7px; border-radius:999px; margin-right:3px; }
+  .S1 { background:#1e3a8a; color:#bfdbfe; } .S3 { background:#78350f; color:#fde68a; }
+  .FIN { background:#3f3f46; color:#e4e4e7; }
+  .up { color:var(--accent); } .down { color:var(--red); }
+  .note { color:var(--muted); font-size:13px; margin-top:10px; }
+  a { color:var(--blue); }
+  .modal { position:fixed; inset:0; background:rgba(0,0,0,.65); display:none; align-items:flex-start;
+           justify-content:center; padding:24px 16px; overflow-y:auto; z-index:10; }
+  .modal.open { display:flex; }
+  .box { background:var(--card); border:1px solid var(--line); border-radius:14px; width:100%;
+         max-width:860px; padding:20px; }
+  .box h3 { margin:0; font-size:20px; } .close { float:right; background:none; border:0; color:var(--muted);
+         font-size:22px; cursor:pointer; }
+  .grid2 { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr)); gap:16px; margin-top:14px; }
+  .grid2 > div { position:relative; height:230px; min-width:0; }
+  .scroll { overflow-x:auto; margin-top:14px; }
+  .box table th { position:static; cursor:default; }
+  .src { font-size:12px; color:var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Dividend Scan</h1>
+  <p class="sub" id="sub"></p>
+
+  <div class="cards" id="cards"></div>
+
+  <h2>ด่านคัดกรอง</h2>
+  <div class="funnel" id="funnel"></div>
+
+  <h2>หุ้นที่ผ่านด่านปันผล</h2>
+  <div class="filters" id="filters"></div>
+  <div class="tbl"><table>
+    <thead><tr id="head"></tr></thead>
+    <tbody id="body"></tbody>
+  </table></div>
+  <p class="note">คลิกหัวตารางเพื่อเรียง คลิกแถวเพื่อดูตัวเลขรายปีและแหล่งที่มา ขีดเขียวด้านซ้าย = อยู่ใน shortlist
+    · S1 = ป้อมปราการเงินสด (เงินสด ÷ Market Cap ≥ 50%, D/E &lt; 1) · S3 = โตสวนราคา (รายได้และกำไรปี 2025 &gt; 2022 แต่ Market Cap ไม่เพิ่ม)
+    · กลุ่มการเงินและ REIT ใช้ ROE แทน ROIC</p>
+  <p class="note">ไม่ใช่คำแนะนำการลงทุน ใช้เพื่อคัดหุ้นไปศึกษาต่อเท่านั้น ตัวเลขทุกตัวต้องตรวจกับเอกสารที่บริษัทยื่นก่อนใช้ตัดสินใจ</p>
+</div>
+
+<div class="modal" id="modal"><div class="box" id="box"></div></div>
+
+<script>
+const D = /*__DATA__*/null;
+const pct = (v, d = 1) => v == null ? "–" : (v * 100).toFixed(d) + "%";
+const fx = (v, d = 2) => v == null ? "–" : Number(v).toFixed(d);
+const tags = r => (r.badges ? r.badges.split(" ") : []).map(b => `<span class="tag ${b}">${b}</span>`).join("")
+  + (r.financial ? '<span class="tag FIN">การเงิน</span>' : "");
+const sl = D.rows.filter(r => r.shortlist);
+const med = a => { const s = a.filter(v => v != null).sort((x, y) => x - y); return s.length ? s[Math.floor(s.length / 2)] : null; };
+
+document.getElementById("sub").textContent =
+  `คัดหุ้นทั้งตลาดด้วยด่านปันผล (yield > ${D.criteria.min_yield}%, payout ${D.criteria.payout_min * 100}–${D.criteria.payout_max * 100}%, DPS ปี ${D.years[D.years.length - 1]} > ${D.years[0]} และลดได้ไม่เกิน ${D.criteria.max_cuts} ครั้ง) แล้วให้คะแนน · ราคาและ yield จาก SET ณ ${D.rows[0]?.price_date ?? "–"}`;
+
+document.getElementById("cards").innerHTML = [
+  ["ผ่านด่านปันผล", D.funnel.dps + " ตัว", `จาก ${D.funnel.universe} ตัว`],
+  ["Shortlist", sl.length + " ตัว", `คะแนนสูงสุด ${D.top} อันดับ`],
+  ["Yield มัธยฐาน (shortlist)", fx(med(sl.map(r => r.yield_pct))) + "%", `พันธบัตร 10 ปี ${fx(D.bond.value)}% (${D.bond.as_of})`],
+  ["DPS โตต่อปี มัธยฐาน", fx(med(sl.map(r => r.dps_cagr_pct)), 1) + "%", "CAGR 2021–2025"],
+  ["ได้ป้าย S1 / S3", `${D.rows.filter(r => r.badges.includes("S1")).length} / ${D.rows.filter(r => r.badges.includes("S3")).length}`, "จากหุ้นที่ผ่านด่าน"],
+].map(([k, v, n]) => `<div class="card"><div class="k">${k}</div><div class="v">${v}</div><div class="n">${n}</div></div>`).join("");
+
+document.getElementById("funnel").innerHTML = [
+  ["หุ้นทั้งหมด", D.funnel.universe], [`Yield > ${D.criteria.min_yield}%`, D.funnel.yield],
+  [`Payout ${D.criteria.payout_min * 100}–${D.criteria.payout_max * 100}%`, D.funnel.payout],
+  ["DPS มีแนวโน้มเพิ่ม", D.funnel.dps], ["Shortlist", sl.length],
+].map(([k, v]) => `<div class="step"><b>${v}</b>${k}</div>`).join('<span class="arrow">→</span>');
+
+const cols = [
+  ["rank", "#", r => r.rank], ["ticker", "หุ้น", r => `<b>${r.ticker}</b> ${tags(r)}`],
+  ["sector", "หมวด", r => r.sector ?? "–"], ["score", "คะแนน", r => fx(r.score, 1)],
+  ["yield_pct", "Yield", r => fx(r.yield_pct) + "%"], ["payout_2025", "Payout 2025", r => pct(r.payout_2025, 0)],
+  ["dps_cagr_pct", "DPS โต/ปี", r => fx(r.dps_cagr_pct, 1) + "%"], ["dps_cuts", "ปีที่ DPS ลด", r => r.dps_cuts],
+  ["ret_2025", "ROIC/ROE 2025", r => `${pct(r.ret_2025)} <span class="${r.return_up ? "up" : "down"}">${r.return_up ? "▲" : "▼"}</span>`],
+  ["cash_mcap", "เงินสด/MCap", r => pct(r.cash_mcap, 0)], ["pe", "P/E", r => fx(r.pe, 1)],
+];
+let sortKey = "rank", sortDir = 1, filter = "all";
+const filters = { all: ["ทั้งหมด", () => true], sl: ["Shortlist", r => r.shortlist],
+  S1: ["S1 เงินสดล้นมือ", r => r.badges.includes("S1")], S3: ["S3 โตสวนราคา", r => r.badges.includes("S3")],
+  fin: ["กลุ่มการเงิน", r => r.financial], nonfin: ["ไม่ใช่กลุ่มการเงิน", r => !r.financial] };
+
+function render() {
+  document.getElementById("filters").innerHTML = Object.entries(filters).map(([k, [lab, f]]) =>
+    `<button data-f="${k}" class="${k === filter ? "on" : ""}">${lab} (${D.rows.filter(f).length})</button>`).join("");
+  document.getElementById("head").innerHTML = cols.map(([k, lab]) =>
+    `<th data-k="${k}">${lab}${k === sortKey ? (sortDir > 0 ? " ▲" : " ▼") : ""}</th>`).join("");
+  const rows = D.rows.filter(filters[filter][1]).slice().sort((a, b) => {
+    const x = a[sortKey], y = b[sortKey];
+    if (x == null) return 1; if (y == null) return -1;
+    return (typeof x === "string" ? x.localeCompare(y) : x - y) * sortDir;
+  });
+  document.getElementById("body").innerHTML = rows.map(r =>
+    `<tr class="${r.shortlist ? "sl" : ""}" data-t="${r.ticker}">${cols.map(c => `<td>${c[2](r)}</td>`).join("")}</tr>`).join("");
+}
+document.getElementById("filters").onclick = e => { if (e.target.dataset.f) { filter = e.target.dataset.f; render(); } };
+document.getElementById("head").onclick = e => {
+  const k = e.target.dataset.k; if (!k) return;
+  sortDir = k === sortKey ? -sortDir : (["rank", "ticker", "sector"].includes(k) ? 1 : -1); sortKey = k; render();
+};
+document.getElementById("body").onclick = e => { const tr = e.target.closest("tr"); if (tr) openModal(tr.dataset.t); };
+
+let charts = [];
+function openModal(t) {
+  const r = D.rows.find(x => x.ticker === t), Y = D.years;
+  const setDps = JSON.parse(r.set_dps_by_xd_year || "{}");
+  document.getElementById("box").innerHTML = `
+    <button class="close" onclick="closeModal()">×</button>
+    <h3>${r.ticker} ${tags(r)}</h3>
+    <div class="src">${r.name ?? ""} · ${r.sector ?? ""} · อันดับ ${r.rank} · คะแนน ${fx(r.score, 1)}</div>
+    <div class="grid2"><div><canvas id="c1"></canvas></div><div><canvas id="c2"></canvas></div></div>
+    <div class="scroll"><table><thead><tr><th style="text-align:left">รายการ</th>${Y.map(y => `<th>${y}</th>`).join("")}</tr></thead><tbody>
+      <tr><td style="text-align:left">DPS ตามปีผลประกอบการ (Jitta, ปรับแตกพาร์แล้ว)</td>${Y.map(y => `<td>${fx(r["dps_" + y], 3)}</td>`).join("")}</tr>
+      <tr><td style="text-align:left">DPS ตามประกาศจริง รวมตามปี XD (SET)</td>${Y.map(y => `<td>${setDps[y] != null ? fx(setDps[y], 3) : "–"}</td>`).join("")}</tr>
+      <tr><td style="text-align:left">${r.return_metric}</td>${Y.map(y => `<td>${pct(r["ret_" + y])}</td>`).join("")}</tr>
+    </tbody></table></div>
+    <div class="scroll"><table><tbody>
+      <tr><td style="text-align:left">Yield</td><td>${fx(r.yield_pct)}% (สูงกว่าพันธบัตร 10 ปี ${fx(r.spread_vs_bond_pct)} จุด)</td><td class="src" style="text-align:left">${r.src_yield}</td></tr>
+      <tr><td style="text-align:left">Payout 2025</td><td>${pct(r.payout_2025, 0)}</td><td class="src" style="text-align:left">${r.src_payout}</td></tr>
+      <tr><td style="text-align:left">DPS โตต่อปี / ปีที่ลด</td><td>${fx(r.dps_cagr_pct, 1)}% / ${r.dps_cuts} ปี</td><td class="src" style="text-align:left">${r.src_dps}</td></tr>
+      <tr><td style="text-align:left">${r.return_metric} แนวโน้ม</td><td class="${r.return_up ? "up" : "down"}">${r.return_up ? "ขึ้น" : "ลง"}</td><td class="src" style="text-align:left">${r.src_return}</td></tr>
+      <tr><td style="text-align:left">เงินสด/MCap · D/E</td><td>${pct(r.cash_mcap, 0)} · ${fx(r.de)}</td><td class="src" style="text-align:left">${r.src_cash_de ?? "–"}</td></tr>
+      <tr><td style="text-align:left">รายได้ · กำไร · MCap 2022→2025</td><td>${pct(r.rev_chg_22_25, 0)} · ${pct(r.np_chg_22_25, 0)} · ${pct(r.mcap_chg_22_25, 0)}</td><td class="src" style="text-align:left">${r.src_growth}</td></tr>
+    </tbody></table></div>
+    <p class="src">ตรวจย้อน: <a href="${r.url_set}" target="_blank" rel="noopener">SET factsheet</a> · <a href="${r.url_jitta}" target="_blank" rel="noopener">Jitta</a></p>`;
+  document.getElementById("modal").classList.add("open");
+  charts.forEach(c => c.destroy());
+  const opt = title => ({ responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { labels: { color: "#cbd5e1" } }, title: { display: true, text: title, color: "#e2e8f0" } },
+    scales: { x: { ticks: { color: "#94a3b8" }, grid: { color: "#24314f" } }, y: { ticks: { color: "#94a3b8" }, grid: { color: "#24314f" } } } });
+  charts = [
+    new Chart(document.getElementById("c1"), { type: "bar", options: opt("DPS (บาท/หุ้น, Jitta)"),
+      data: { labels: Y, datasets: [{ label: "DPS", data: Y.map(y => r["dps_" + y]), backgroundColor: "#34d399" }] } }),
+    new Chart(document.getElementById("c2"), { type: "line", options: opt(r.return_metric + " (%)"),
+      data: { labels: Y, datasets: [{ label: r.return_metric, data: Y.map(y => r["ret_" + y] == null ? null : r["ret_" + y] * 100),
+        borderColor: "#60a5fa", backgroundColor: "#60a5fa", spanGaps: true }] } }),
+  ];
+}
+function closeModal() { document.getElementById("modal").classList.remove("open"); }
+document.getElementById("modal").onclick = e => { if (e.target.id === "modal") closeModal(); };
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeModal(); });
+render();
+</script>
+</body>
+</html>
